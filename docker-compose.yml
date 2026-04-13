@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  kartelo-md:
+    build: .
+    container_name: kartelo-md-bot
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+    volumes:
+      - ./auth_info:/app/auth_info
+      - ./kartelo.db:/app/kartelo.db
