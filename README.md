@@ -99,9 +99,9 @@
 |----------|-------------|---------|
 | `OWNER_NUMBER` | Your WhatsApp number with country code | `254711939375` |
 | `PREFIX` | Command prefix | `.` |
-| `MODE` | `public` or `self` | `public` |
+| `MODE` | `public` or `self` | `self' |
 | `USE_PAIRING_CODE` | Use pair code (true) or QR (false) | `true` |
-| `SESSION_ID` | Session ID from pair server (optional) | — |
+| `SESSION_ID` | Session ID from pair server (optional) | — |Kartelo md on render 
 | `PORT` | Web panel port | `3000` |
 | `PANEL_PASSWORD` | Admin panel password | `kartelo2024` |
 | `BOT_NAME` | Bot display name | `KARTELO MD` |
