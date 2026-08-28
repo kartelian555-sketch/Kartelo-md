@@ -1,0 +1,49 @@
+{
+  "name": "KARTELO MD",
+  "description": "Powerful WhatsApp MD Bot by Kartelo Official — 80+ commands, AI, economy, leveling, stickers, group management",
+  "logo": "https://i.imgur.com/8Km9tLL.png",
+  "keywords": ["whatsapp", "bot", "md", "kartelo", "baileys", "ai"],
+  "repository": "https://github.com/kartelian555-sketch/Kartelo-md",
+  "website": "https://github.com/kartelian555-sketch/Kartelo-md",
+  "success_url": "/",
+  "stack": "heroku-22",
+  "env": {
+    "OWNER_NUMBER": {
+      "description": "Owner number with country code (no +)",
+      "value": "254711939375",
+      "required": true
+    },
+    "SESSION_ID": {
+      "description": "Paste your SESSION_ID from the pair site (optional for first deploy)",
+      "required": false
+    },
+    "PREFIX": {
+      "description": "Bot command prefix",
+      "value": ".",
+      "required": false
+    },
+    "MODE": {
+      "description": "Bot mode: public or self",
+      "value": "public",
+      "required": false
+    },
+    "USE_PAIRING_CODE": {
+      "description": "Use pairing code to link (true) or QR code (false)",
+      "value": "true",
+      "required": false
+    },
+    "BOT_NAME": {
+      "description": "Display name for the bot",
+      "value": "KARTELO MD",
+      "required": false
+    },
+    "PANEL_PASSWORD": {
+      "description": "Password for the admin panel",
+      "value": "kartelo2024",
+      "required": false
+    }
+  },
+  "buildpacks": [
+    { "url": "heroku/nodejs" }
+  ]
+}

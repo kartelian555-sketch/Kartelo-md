@@ -27,10 +27,43 @@ const {
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
-  makeInMemoryStore,
   jidDecode,
   proto,
 } = require("@whiskeysockets/baileys");
+
+// ─────────────────────────────────────────────────────────────────────────────
+// In-memory store shim (Baileys 6.7.x removed makeInMemoryStore)
+// Provides a minimal store with bind() + chats.all() used by this bot.
+// ─────────────────────────────────────────────────────────────────────────────
+function makeInMemoryStore() {
+  const chats = new Map();
+  return {
+    chats: {
+      all: () => Array.from(chats.values()),
+      get: (id) => chats.get(id),
+      update: (id, data) => chats.set(id, { id, ...data }),
+      insert: (chat) => chats.set(chat.id, chat),
+      delete: (id) => chats.delete(id),
+    },
+    bind: (ev) => {
+      ev.on("messaging-history.set", ({ chats: newChats }) => {
+        for (const c of newChats || []) if (c?.id) chats.set(c.id, c);
+      });
+      ev.on("chats.upsert", (newChats) => {
+        for (const c of newChats || []) if (c?.id) chats.set(c.id, c);
+      });
+      ev.on("chats.update", (updates) => {
+        for (const u of updates || []) if (u?.id) {
+          const existing = chats.get(u.id) || { id: u.id };
+          chats.set(u.id, { ...existing, ...u });
+        }
+      });
+      ev.on("chats.delete", (deletions) => {
+        for (const id of deletions || []) chats.delete(id);
+      });
+    },
+  };
+}
 
 const { Boom } = require("@hapi/boom");
 const pino = require("pino");
@@ -76,10 +109,67 @@ const {
   getGroupSettings, setGroupSetting,
   logCommand, getCommandStats, getTotalCommands,
   getDbStats,
+  // Economy
+  getBalance, addBalance, setLastDaily, setLastWeekly, getLeaderboard,
+  // AFK
+  setAFK, getAFK, removeAFK,
+  // Reminders
+  addReminder, getPendingReminders, deleteReminder,
+  // Profiles
+  getProfile, addXP, setProfileName, setProfileBio,
 } = require("./database");
+
+// HTTPS module for API-based commands (weather, wiki, translate, AI, url shortener)
+const https = require("https");
 
 // Track users already sent auto-join invite (avoid spamming)
 const autoJoinedUsers = new Set();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER: HTTP GET request (returns a Promise)
+// Used by weather, wiki, translate, AI, url shortener, dictionary commands
+// ─────────────────────────────────────────────────────────────────────────────
+function httpGet(url, { headers = {}, timeout = 12000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers, timeout }, (res) => {
+      // Follow redirects (up to 5)
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && (res.headers.location.startsWith("http"))) {
+        return httpGet(res.headers.location, { headers, timeout }).then(resolve).catch(reject);
+      }
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => resolve({ statusCode: res.statusCode, body: data, headers: res.headers }));
+    });
+    req.on("error", reject);
+    req.on("timeout", () => { req.destroy(); reject(new Error("Request timed out")); });
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER: Extract mentioned JIDs from a message
+// ─────────────────────────────────────────────────────────────────────────────
+function getMentionedJids(msg) {
+  const ctx = msg.message?.extendedTextMessage?.contextInfo;
+  if (ctx?.mentionedJid && Array.isArray(ctx.mentionedJid)) return ctx.mentionedJid;
+  return [];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER: Parse time string (e.g. "10m", "2h", "30s", "1d") → milliseconds
+// ─────────────────────────────────────────────────────────────────────────────
+function parseTimeString(str) {
+  const match = /^(\d+)\s*(s|m|h|d)$/i.exec(str.trim());
+  if (!match) return null;
+  const num = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase();
+  const multipliers = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
+  return num * multipliers[unit];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER: Random element from array
+// ─────────────────────────────────────────────────────────────────────────────
+const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // Quotes and jokes pool
 const QUOTES = [
@@ -281,6 +371,27 @@ _Send .menu to get started_ 🚀`;
         } catch (e) {
           console.log("Could not send connect message:", e.message);
         }
+
+        // ── Set Bot Profile Picture & Status ──
+        // Automatically sets the profile picture and "about" status on connect
+        try {
+          const ppPath = path.join(__dirname, "profile-pic.jpg");
+          if (fs.existsSync(ppPath)) {
+            const ppBuffer = fs.readFileSync(ppPath);
+            await sock.updateProfilePicture(sock.user.id, ppBuffer);
+            console.log("📸 Bot profile picture updated successfully!");
+          }
+          // Set "about" status
+          const aboutStatus = process.env.BOT_ABOUT || "🤖 Kartelo 🇰🇪 Official MD — Your all-in-one WhatsApp bot | .menu";
+          await sock.updateProfileStatus(aboutStatus);
+          console.log("📝 Bot profile status (about) updated successfully!");
+          // Set bot name (display name)
+          const botDisplayName = process.env.BOT_DISPLAY_NAME || "Kartelo 🇰🇪 MD";
+          await sock.updateProfileName(botDisplayName);
+          console.log("📛 Bot display name updated successfully!");
+        } catch (e) {
+          console.log("Profile update error:", e.message);
+        }
       }, 3000);
     }
   });
@@ -402,6 +513,54 @@ _Send .menu to get started_ 🚀`;
         logCommand(command, sender, isGroup ? from : null);
       }
 
+      // ──────────────────────────────────────────────────────────────────
+      // XP / LEVELING — award XP for every message (command or not)
+      // ──────────────────────────────────────────────────────────────────
+      if (body && sender !== `${OWNER_NUMBER}@s.whatsapp.net`) {
+        try {
+          const xpResult = addXP(sender, Math.floor(Math.random() * 10) + 5);
+          if (xpResult.leveledUp) {
+            await sock.sendMessage(from, {
+              text: `🎉 *@${senderNumber}* leveled up to **Level ${xpResult.newLevel}**!\nKeep chatting to earn more XP!`,
+              mentions: [sender],
+            }, { quoted: msg });
+          }
+        } catch {}
+      }
+
+      // ──────────────────────────────────────────────────────────────────
+      // AFK AUTO-RESPONSE — if a mentioned user is AFK, notify the chat
+      // ──────────────────────────────────────────────────────────────────
+      const mentioned = getMentionedJids(msg);
+      if (mentioned.length > 0) {
+        for (const mentionedJid of mentioned) {
+          const afkData = getAFK(mentionedJid);
+          if (afkData) {
+            const afkTime = Math.floor((Date.now() / 1000 - afkData.set_at) / 60);
+            const timeStr = afkTime >= 60 ? `${Math.floor(afkTime / 60)}h ${afkTime % 60}m` : `${afkTime}m`;
+            const mentionedNum = mentionedJid.split("@")[0];
+            await sock.sendMessage(from, {
+              text: `🚶 *@${mentionedNum}* is currently AFK.\n\n📝 Reason: ${afkData.reason || "Not set"}\n⏱️ Away for: ${timeStr}`,
+              mentions: [mentionedJid],
+            }, { quoted: msg });
+          }
+        }
+      }
+
+      // ──────────────────────────────────────────────────────────────────
+      // AFK AUTO-CLEAR — if an AFK user sends any message, remove their AFK
+      // ──────────────────────────────────────────────────────────────────
+      const myAfk = getAFK(sender);
+      if (myAfk && command !== ".afk") {
+        removeAFK(sender);
+        const awayTime = Math.floor((Date.now() / 1000 - myAfk.set_at) / 60);
+        const timeStr = awayTime >= 60 ? `${Math.floor(awayTime / 60)}h ${awayTime % 60}m` : `${awayTime}m`;
+        await sock.sendMessage(from, {
+          text: `👋 Welcome back *@${senderNumber}*!\nYou were away for ${timeStr}.`,
+          mentions: [sender],
+        }, { quoted: msg });
+      }
+
       // .menu — List all available features
       if (command === ".menu") {
         const menuText = `
@@ -440,6 +599,9 @@ _Send .menu to get started_ 🚀`;
 • *.block @user* — Block a user
 • *.unblock @user* — Unblock a user
 • *.broadcast <text>* — Broadcast a message
+• *.setpp* — Set bot profile picture (reply to image) 📸
+• *.setabout <text>* — Set bot "about" status 📝
+• *.setnamebot <text>* — Set bot display name 📛
 
 *CHANNELS* _(Owner only)_
 • *.followchannel <link>* — Follow a channel
@@ -456,6 +618,48 @@ _Send .menu to get started_ 🚀`;
 • *.calc <expression>* — Calculator (e.g. .calc 5+5)
 • *.play <song name>* — Search & send YouTube audio 🎵
 • *.dl <url>* — Download audio from YouTube URL
+• *.sticker* — Convert image to sticker 🏷️
+• *.qr <text>* — Generate a QR code 📱
+• *.shorten <url>* — Shorten a long URL 🔗
+• *.weather <city>* — Get weather info 🌤️
+• *.wiki <query>* — Search Wikipedia 📚
+• *.tr <text>* — Translate text 🌐
+• *.ai <prompt>* — AI assistant chat 🤖
+• *.define <word>* — Dictionary definition 📖
+
+*ECONOMY* 💰
+• *.balance* — Check your coin balance
+• *.daily* — Claim daily reward (100 coins)
+• *.weekly* — Claim weekly reward (500 coins)
+• *.leaderboard* — Top 10 richest users
+• *.gamble <amount>* — Bet your coins (50/50)
+• *.transfer @user <amount>* — Send coins to a user
+
+*PROFILE & LEVELING* 📊
+• *.profile [@user]* — View your profile card
+• *.myname <name>* — Set your display name
+• *.setbio <text>* — Set your bio
+• *.rank* — Check your XP & level
+
+*AFK SYSTEM* 🚶
+• *.afk <reason>* — Set yourself as Away
+• *(Auto-responds when you are mentioned while AFK)*
+
+*REMINDERS* ⏰
+• *.remind <time> <message>* — Set a reminder (e.g. .remind 10m Check food)
+
+*FUN & GAMES* 🎮
+• *.8ball <question>* — Magic 8-Ball 🎱
+• *.coinflip* — Heads or tails 🪙
+• *.dice* — Roll a dice 🎲
+• *.truth* — Random truth question
+• *.dare* — Random dare
+• *.wyr* — Would you rather
+• *.rps <rock|paper|scissors>* — Rock Paper Scissors
+• *.pick <option1|option2>* — Bot picks for you
+• *.ship @user1 @user2* — Love calculator 💕
+• *.fact* — Random fun fact
+• *.quote2* — Random motivational quote
 
 *DATABASE* _(Admin/Owner)_
 • *.ban @user [reason]* — Ban a user
@@ -472,6 +676,10 @@ _Send .menu to get started_ 🚀`;
 • *.delreply <trigger>* — Delete auto-reply
 • *.replies* — List auto-replies
 • *.dbstats* — Database statistics
+
+*MODERATION*
+• *.delete* — Delete a message (reply to it)
+• *.purge <count>* — Bulk delete (admin)
 
 ╔══════════════════════════════╗
 ║ © ${BOT_NAME}  ║
@@ -732,6 +940,82 @@ _Contact the owner for support._
           await sock.sendMessage(from, { text: `📤 *Output:*\n\`\`\`\n${output}\n\`\`\`` }, { quoted: msg });
         } catch (err) {
           await sock.sendMessage(from, { text: `❌ *Error:*\n\`\`\`\n${err.message}\n\`\`\`` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .setpp — Set bot profile picture (OWNER ONLY, reply to an image)
+      if (command === ".setpp") {
+        if (!isOwner) {
+          await sock.sendMessage(from, { text: "⛔ This command is restricted to the bot owner." }, { quoted: msg });
+          continue;
+        }
+        const isImage = msg.message?.imageMessage || (msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage);
+        if (!isImage) {
+          await sock.sendMessage(from, { text: "📸 Reply to an image with *.setpp* to set it as the bot's profile picture." }, { quoted: msg });
+          continue;
+        }
+        try {
+          let imgMsg = msg.message?.imageMessage;
+          if (!imgMsg) {
+            const quoted = msg.message?.extendedTextMessage?.contextInfo;
+            imgMsg = quoted?.quotedMessage?.imageMessage;
+          }
+          if (imgMsg?.url) {
+            const stream = await require("@whiskeysockets/baileys").downloadContentFromMessage(imgMsg, "image");
+            const chunks = [];
+            for await (const chunk of stream) chunks.push(chunk);
+            const imgBuffer = Buffer.concat(chunks);
+            // Save to file for persistence across restarts
+            fs.writeFileSync(path.join(__dirname, "profile-pic.jpg"), imgBuffer);
+            // Update WhatsApp profile picture
+            await sock.updateProfilePicture(sock.user.id, imgBuffer);
+            await sock.sendMessage(from, { text: "✅ Bot profile picture updated successfully!" }, { quoted: msg });
+          } else {
+            await sock.sendMessage(from, { text: "❌ Could not process the image." }, { quoted: msg });
+          }
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ Profile picture error: ${err.message}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .setabout <text> — Set bot "about" status (OWNER ONLY)
+      if (command === ".setabout") {
+        if (!isOwner) {
+          await sock.sendMessage(from, { text: "⛔ This command is restricted to the bot owner." }, { quoted: msg });
+          continue;
+        }
+        const aboutText = args.join(" ");
+        if (!aboutText) {
+          await sock.sendMessage(from, { text: "📝 Usage: *.setabout <status text>*\n\nExample: *.setabout 🤖 Kartelo MD — Your WhatsApp assistant*" }, { quoted: msg });
+          continue;
+        }
+        try {
+          await sock.updateProfileStatus(aboutText.substring(0, 139));
+          await sock.sendMessage(from, { text: `✅ Bot "about" status updated to:\n\n${aboutText.substring(0, 139)}` }, { quoted: msg });
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ Could not update status: ${err.message}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .setnamebot <text> — Set bot display name (OWNER ONLY)
+      if (command === ".setnamebot") {
+        if (!isOwner) {
+          await sock.sendMessage(from, { text: "⛔ This command is restricted to the bot owner." }, { quoted: msg });
+          continue;
+        }
+        const botName = args.join(" ");
+        if (!botName) {
+          await sock.sendMessage(from, { text: "📛 Usage: *.setnamebot <display name>*\n\nExample: *.setnamebot Kartelo 🇰🇪 MD*" }, { quoted: msg });
+          continue;
+        }
+        try {
+          await sock.updateProfileName(botName.substring(0, 25));
+          await sock.sendMessage(from, { text: `✅ Bot display name updated to: *${botName.substring(0, 25)}*` }, { quoted: msg });
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ Could not update name: ${err.message}` }, { quoted: msg });
         }
         continue;
       }
@@ -1467,6 +1751,575 @@ ${adminList || "None"}
         }
         continue;
       }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // NEW COMMANDS — Sticker, QR, Weather, Wiki, Translate, AI, Dictionary,
+      //                URL Shortener, Economy, AFK, Reminders, Profile, Fun Games
+      // ═══════════════════════════════════════════════════════════════════════
+
+      // .sticker — Convert replied image to a WhatsApp sticker
+      if (command === ".sticker" || command === ".s") {
+        const isImage = msg.message?.imageMessage || (msg.message?.extendedTextMessage?.contextInfo?.quotedMessage?.imageMessage);
+        if (!isImage) {
+          await sock.sendMessage(from, { text: "🏷️ Reply to an image with *.sticker* to convert it to a sticker." }, { quoted: msg });
+          continue;
+        }
+        try {
+          let imgBuffer;
+          let imgMsg = msg.message?.imageMessage;
+          if (!imgMsg) {
+            const quoted = msg.message?.extendedTextMessage?.contextInfo;
+            imgMsg = quoted?.quotedMessage?.imageMessage;
+          }
+          if (imgMsg?.url) {
+            const stream = await require("@whiskeysockets/baileys").downloadContentFromMessage(imgMsg, "image");
+            const chunks = [];
+            for await (const chunk of stream) chunks.push(chunk);
+            imgBuffer = Buffer.concat(chunks);
+          }
+          if (imgBuffer) {
+            await sock.sendMessage(from, { sticker: imgBuffer }, { quoted: msg });
+          } else {
+            await sock.sendMessage(from, { text: "❌ Could not process the image." }, { quoted: msg });
+          }
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ Sticker error: ${err.message}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .qr <text> — Generate a QR code from text
+      if (command === ".qr") {
+        const qrText = args.join(" ");
+        if (!qrText) {
+          await sock.sendMessage(from, { text: "📱 Usage: *.qr <text or URL>*\n\nExample: *.qr https://wa.me/254711939375*" }, { quoted: msg });
+          continue;
+        }
+        try {
+          const qrBuffer = await QRCode.toBuffer(qrText, { width: 300, margin: 2 });
+          await sock.sendMessage(from, { image: qrBuffer, caption: `📱 QR code for:\n${qrText}` }, { quoted: msg });
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ QR generation failed: ${err.message}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .shorten <url> — Shorten a URL using is.gd free API
+      if (command === ".shorten") {
+        let url = args[0];
+        if (!url) {
+          await sock.sendMessage(from, { text: "🔗 Usage: *.shorten <url>*\n\nExample: *.shorten https://example.com*" }, { quoted: msg });
+          continue;
+        }
+        if (!url.startsWith("http")) url = "https://" + url;
+        try {
+          const apiUrl = `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`;
+          const { body } = await httpGet(apiUrl);
+          if (body && body.startsWith("http")) {
+            await sock.sendMessage(from, { text: `🔗 *Shortened URL:*\n${body}` }, { quoted: msg });
+          } else {
+            await sock.sendMessage(from, { text: `❌ Could not shorten URL.\n${body}` }, { quoted: msg });
+          }
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ Error: ${err.message}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .weather <city> — Get current weather using Open-Meteo (no API key needed)
+      if (command === ".weather") {
+        const city = args.join(" ");
+        if (!city) {
+          await sock.sendMessage(from, { text: "🌤️ Usage: *.weather <city>*\n\nExample: *.weather Nairobi*" }, { quoted: msg });
+          continue;
+        }
+        try {
+          // Step 1: Geocode the city name
+          const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
+          const geoRes = await httpGet(geoUrl);
+          const geoData = JSON.parse(geoRes.body);
+          if (!geoData.results || geoData.results.length === 0) {
+            await sock.sendMessage(from, { text: `❌ City "${city}" not found.` }, { quoted: msg });
+            continue;
+          }
+          const { latitude, longitude, name, country, admin1 } = geoData.results[0];
+          // Step 2: Get weather
+          const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto`;
+          const wRes = await httpGet(weatherUrl);
+          const w = JSON.parse(wRes.body).current;
+          const weatherMap = { 0: "Clear sky ☀️", 1: "Mainly clear 🌤️", 2: "Partly cloudy ⛅", 3: "Overcast ☁️", 45: "Foggy 🌫️", 48: "Rime fog 🌫️", 51: "Light drizzle 🌦️", 53: "Drizzle 🌦️", 55: "Heavy drizzle 🌦️", 61: "Slight rain 🌧️", 63: "Rain 🌧️", 65: "Heavy rain 🌧️", 71: "Slight snow 🌨️", 73: "Snow 🌨️", 75: "Heavy snow 🌨️", 80: "Rain showers 🌦️", 81: "Rain showers 🌦️", 82: "Violent rain showers ⛈️", 95: "Thunderstorm ⛈️", 96: "Thunderstorm with hail ⛈️", 99: "Severe thunderstorm ⛈️" };
+          const desc = weatherMap[w.weather_code] || "Unknown";
+          const weatherText = `🌤️ *Weather — ${name}, ${admin1 || ""} ${country}*\n\n🌡️ Temperature: ${w.temperature_2m}°C (feels like ${w.apparent_temperature}°C)\n💧 Humidity: ${w.relative_humidity_2m}%\n💨 Wind: ${w.wind_speed_10m} km/h\n☁️ Condition: ${desc}`;
+          await sock.sendMessage(from, { text: weatherText }, { quoted: msg });
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ Weather error: ${err.message}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .wiki <query> — Search Wikipedia
+      if (command === ".wiki") {
+        const query = args.join(" ");
+        if (!query) {
+          await sock.sendMessage(from, { text: "📚 Usage: *.wiki <query>*\n\nExample: *.wiki Kenya*" }, { quoted: msg });
+          continue;
+        }
+        try {
+          const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`;
+          const { statusCode, body } = await httpGet(wikiUrl);
+          if (statusCode !== 200) {
+            await sock.sendMessage(from, { text: `❌ No Wikipedia article found for "${query}".` }, { quoted: msg });
+            continue;
+          }
+          const data = JSON.parse(body);
+          if (data.type === "disambiguation") {
+            await sock.sendMessage(from, { text: `📚 *${data.title}* is a disambiguation page.\n\n${data.extract}\n\n🔗 ${data.content_urls?.desktop?.page || ""}` }, { quoted: msg });
+          } else {
+            const wikiText = `📚 *${data.title}*\n\n${data.extract}\n\n🔗 Read more: ${data.content_urls?.desktop?.page || ""}`;
+            await sock.sendMessage(from, { text: wikiText }, { quoted: msg });
+          }
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ Wiki search error: ${err.message}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .tr <text> — Translate text using MyMemory free API
+      if (command === ".tr") {
+        const text = args.join(" ");
+        if (!text) {
+          await sock.sendMessage(from, { text: "🌐 Usage: *.tr <text>*\n\nTranslates to English automatically.\nExample: *.tr Bonjour le monde*" }, { quoted: msg });
+          continue;
+        }
+        try {
+          const trUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=auto|en`;
+          const { body } = await httpGet(trUrl);
+          const data = JSON.parse(body);
+          if (data.responseData) {
+            const translated = data.responseData.translatedText;
+            const detected = data.responseData.detectedSourceLanguage || "auto";
+            await sock.sendMessage(from, { text: `🌐 *Translation*\n\n📝 Original: ${text}\n🔄 English: ${translated}\n📊 Detected: ${detected}` }, { quoted: msg });
+          } else {
+            await sock.sendMessage(from, { text: "❌ Translation failed." }, { quoted: msg });
+          }
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ Translate error: ${err.message}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .ai <prompt> — AI chat using Pollinations AI (free, no API key)
+      if (command === ".ai") {
+        const prompt = args.join(" ");
+        if (!prompt) {
+          await sock.sendMessage(from, { text: "🤖 Usage: *.ai <your question>*\n\nExample: *.ai Tell me a joke*" }, { quoted: msg });
+          continue;
+        }
+        try {
+          await sock.sendMessage(from, { text: "🤖 Thinking..." }, { quoted: msg });
+          const aiUrl = `https://text.pollinations.ai/${encodeURIComponent(prompt)}`;
+          const { statusCode, body } = await httpGet(aiUrl, { timeout: 25000 });
+          if (statusCode === 200 && body && body.trim()) {
+            const response = body.trim().substring(0, 2000);
+            await sock.sendMessage(from, { text: `🤖 *AI Assistant*\n\n${response}` }, { quoted: msg });
+          } else {
+            await sock.sendMessage(from, { text: "❌ AI could not generate a response. Try again later." }, { quoted: msg });
+          }
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ AI error: ${err.message}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .define <word> — Dictionary definition using Free Dictionary API
+      if (command === ".define") {
+        const word = args.join(" ");
+        if (!word) {
+          await sock.sendMessage(from, { text: "📖 Usage: *.define <word>*\n\nExample: *.define happiness*" }, { quoted: msg });
+          continue;
+        }
+        try {
+          const defUrl = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`;
+          const { statusCode, body } = await httpGet(defUrl);
+          if (statusCode !== 200) {
+            await sock.sendMessage(from, { text: `❌ No definition found for "${word}".` }, { quoted: msg });
+            continue;
+          }
+          const data = JSON.parse(body);
+          const entry = data[0];
+          const meaning = entry.meanings[0];
+          const definition = meaning.definitions[0];
+          const defText = `📖 *${entry.word}* (${meaning.partOfSpeech})\n\n${definition.definition}${definition.example ? `\n\n📝 Example: ${definition.example}` : ""}${entry.phonetic ? `\n🔊 ${entry.phonetic}` : ""}`;
+          await sock.sendMessage(from, { text: defText }, { quoted: msg });
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ Dictionary error: ${err.message}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // ECONOMY COMMANDS
+      // ═══════════════════════════════════════════════════════════════════════
+
+      // .balance — Check your coin balance
+      if (command === ".balance" || command === ".wallet") {
+        const bal = getBalance(sender);
+        await sock.sendMessage(from, { text: `💰 *Your Balance*\n\n🪙 Coins: *${bal.balance}*\n📊 Total earned: *${bal.total_earned}*\n💸 Total spent: *${bal.total_spent}*\n📈 Net: *${bal.balance}*` }, { quoted: msg });
+        continue;
+      }
+
+      // .daily — Claim daily reward
+      if (command === ".daily") {
+        const bal = getBalance(sender);
+        const now = Math.floor(Date.now() / 1000);
+        if (bal.last_daily && now - bal.last_daily < 86400) {
+          const remaining = 86400 - (now - bal.last_daily);
+          const hours = Math.floor(remaining / 3600);
+          const mins = Math.floor((remaining % 3600) / 60);
+          await sock.sendMessage(from, { text: `⏰ You already claimed your daily reward!\n\nCome back in *${hours}h ${mins}m*.` }, { quoted: msg });
+          continue;
+        }
+        addBalance(sender, 100);
+        setLastDaily(sender);
+        await sock.sendMessage(from, { text: `🎁 *Daily Reward Claimed!*\n\n💰 You received *100 coins*!\n🪙 New balance: *${getBalance(sender).balance}*` }, { quoted: msg });
+        continue;
+      }
+
+      // .weekly — Claim weekly reward
+      if (command === ".weekly") {
+        const bal = getBalance(sender);
+        const now = Math.floor(Date.now() / 1000);
+        if (bal.last_weekly && now - bal.last_weekly < 604800) {
+          const remaining = 604800 - (now - bal.last_weekly);
+          const days = Math.floor(remaining / 86400);
+          const hours = Math.floor((remaining % 86400) / 3600);
+          await sock.sendMessage(from, { text: `⏰ You already claimed your weekly reward!\n\nCome back in *${days}d ${hours}h*.` }, { quoted: msg });
+          continue;
+        }
+        addBalance(sender, 500);
+        setLastWeekly(sender);
+        await sock.sendMessage(from, { text: `🎁 *Weekly Reward Claimed!*\n\n💰 You received *500 coins*!\n🪙 New balance: *${getBalance(sender).balance}*` }, { quoted: msg });
+        continue;
+      }
+
+      // .leaderboard — Top 10 richest users
+      if (command === ".leaderboard" || command === ".lb") {
+        const board = getLeaderboard(10);
+        if (board.length === 0) {
+          await sock.sendMessage(from, { text: "📊 No economy data yet. Use *.daily* to start earning coins!" }, { quoted: msg });
+          continue;
+        }
+        let lbText = "🏆 *Coin Leaderboard*\n\n";
+        const medals = ["🥇", "🥈", "🥉"];
+        board.forEach((row, i) => {
+          const num = row.jid.split("@")[0];
+          const medal = medals[i] || `${i + 1}.`;
+          lbText += `${medal} +${num} — *${row.balance}* coins\n`;
+        });
+        await sock.sendMessage(from, { text: lbText.trim() }, { quoted: msg });
+        continue;
+      }
+
+      // .gamble <amount> — Bet your coins (50/50 double or nothing)
+      if (command === ".gamble" || command === ".bet") {
+        const amount = parseInt(args[0], 10);
+        if (!amount || amount < 1) {
+          await sock.sendMessage(from, { text: "🎰 Usage: *.gamble <amount>*\n\nExample: *.gamble 50*\nWin: double your bet. Lose: lose your bet." }, { quoted: msg });
+          continue;
+        }
+        const bal = getBalance(sender);
+        if (bal.balance < amount) {
+          await sock.sendMessage(from, { text: `❌ You only have *${bal.balance}* coins. Can't bet *${amount}*.` }, { quoted: msg });
+          continue;
+        }
+        const won = Math.random() < 0.5;
+        if (won) {
+          addBalance(sender, amount);
+          await sock.sendMessage(from, { text: `🎉 *You won!*\n\n💰 Bet: ${amount} coins\n📈 Payout: +${amount} coins\n🪙 New balance: *${getBalance(sender).balance}*` }, { quoted: msg });
+        } else {
+          addBalance(sender, -amount);
+          await sock.sendMessage(from, { text: `💀 *You lost!*\n\n💰 Bet: ${amount} coins\n📉 Loss: -${amount} coins\n🪙 New balance: *${getBalance(sender).balance}*` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .transfer @user <amount> — Send coins to another user
+      if (command === ".transfer" || command === ".pay") {
+        const mentionedJids = getMentionedJids(msg);
+        const amount = parseInt(args.find((a) => /^\d+$/.test(a)), 10);
+        if (!mentionedJids[0] || !amount || amount < 1) {
+          await sock.sendMessage(from, { text: "💸 Usage: *.transfer @user <amount>*\n\nExample: *.transfer @254711939375 100*" }, { quoted: msg });
+          continue;
+        }
+        const recipient = mentionedJids[0];
+        if (recipient === sender) {
+          await sock.sendMessage(from, { text: "❌ You can't transfer coins to yourself!" }, { quoted: msg });
+          continue;
+        }
+        const bal = getBalance(sender);
+        if (bal.balance < amount) {
+          await sock.sendMessage(from, { text: `❌ Insufficient balance. You have *${bal.balance}* coins.` }, { quoted: msg });
+          continue;
+        }
+        addBalance(sender, -amount);
+        addBalance(recipient, amount);
+        const recipientNum = recipient.split("@")[0];
+        await sock.sendMessage(from, { text: `✅ *Transfer Successful*\n\n💸 Sent: *${amount}* coins to @${recipientNum}\n🪙 Your balance: *${getBalance(sender).balance}*`, mentions: [recipient] }, { quoted: msg });
+        continue;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // AFK SYSTEM
+      // ═══════════════════════════════════════════════════════════════════════
+
+      // .afk <reason> — Set yourself as Away From Keyboard
+      if (command === ".afk") {
+        const reason = args.join(" ") || "Not set";
+        setAFK(sender, reason);
+        await sock.sendMessage(from, { text: `🚶 *@${senderNumber}* is now AFK.\n📝 Reason: ${reason}\n\nI'll auto-respond when someone mentions you.`, mentions: [sender] }, { quoted: msg });
+        continue;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // REMINDER SYSTEM
+      // ═══════════════════════════════════════════════════════════════════════
+
+      // .remind <time> <message> — Set a persistent reminder
+      if (command === ".remind") {
+        const timeStr = args[0];
+        const message = args.slice(1).join(" ");
+        if (!timeStr || !message) {
+          await sock.sendMessage(from, { text: "⏰ Usage: *.remind <time> <message>*\n\nTime formats: 30s, 10m, 2h, 1d\nExample: *.remind 10m Check the food*" }, { quoted: msg });
+          continue;
+        }
+        const ms = parseTimeString(timeStr);
+        if (!ms) {
+          await sock.sendMessage(from, { text: "❌ Invalid time format. Use: 30s, 10m, 2h, or 1d\n\nExample: *.remind 10m Check the food*" }, { quoted: msg });
+          continue;
+        }
+        const remindAt = Math.floor(Date.now() / 1000) + Math.floor(ms / 1000);
+        addReminder(sender, from, message, remindAt);
+        const timeLabel = timeStr.replace(/(\d+)([smhd])/, (_, n, u) => `${n} ${ { s: "second", m: "minute", h: "hour", d: "day" }[u] }${n > 1 ? "s" : ""}`);
+        await sock.sendMessage(from, { text: `⏰ *Reminder set!*\n\n📝 Reminder: ${message}\n⏱️ In: ${timeLabel}\n📍 I'll remind you in this chat.` }, { quoted: msg });
+        continue;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // PROFILE & LEVELING
+      // ═══════════════════════════════════════════════════════════════════════
+
+      // .profile [@user] — View profile card
+      if (command === ".profile") {
+        const mentionedJids = getMentionedJids(msg);
+        const targetJid = mentionedJids[0] || sender;
+        const targetNum = targetJid.split("@")[0];
+        const profile = getProfile(targetJid);
+        const xpForNext = (profile.level * 100) - profile.xp;
+        const bal = getBalance(targetJid);
+        const profileText = `📊 *Profile Card*\n\n👤 User: @${targetNum}\n📛 Name: ${profile.display_name || "Not set"}\n📝 Bio: ${profile.bio || "Not set"}\n\n📈 Level: *${profile.level}*\n⚡ XP: *${profile.xp}* / ${profile.level * 100}\n📊 XP to next level: *${xpForNext > 0 ? xpForNext : 0}*\n💬 Messages: *${profile.messages_count}*\n\n💰 Coins: *${bal.balance}*`;
+        await sock.sendMessage(from, { text: profileText, mentions: [targetJid] }, { quoted: msg });
+        continue;
+      }
+
+      // .myname <name> — Set display name (personal profile)
+      if (command === ".myname") {
+        const name = args.join(" ");
+        if (!name) {
+          await sock.sendMessage(from, { text: "👤 Usage: *.myname <your name>*\n\nSets your profile display name." }, { quoted: msg });
+          continue;
+        }
+        setProfileName(sender, name.substring(0, 50));
+        await sock.sendMessage(from, { text: `✅ Display name set to *${name}*` }, { quoted: msg });
+        continue;
+      }
+
+      // .setbio <text> — Set personal bio
+      if (command === ".setbio") {
+        const bio = args.join(" ");
+        if (!bio) {
+          await sock.sendMessage(from, { text: "📝 Usage: *.setbio <your bio>*\n\nSets your profile bio." }, { quoted: msg });
+          continue;
+        }
+        setProfileBio(sender, bio.substring(0, 200));
+        await sock.sendMessage(from, { text: `✅ Bio updated!` }, { quoted: msg });
+        continue;
+      }
+
+      // .rank — Check your XP & level
+      if (command === ".rank" || command === ".xp") {
+        const profile = getProfile(sender);
+        const xpForNext = (profile.level * 100) - profile.xp;
+        const progress = Math.min(10, Math.floor(profile.xp % 100 / 10));
+        const bar = "█".repeat(progress) + "░".repeat(10 - progress);
+        await sock.sendMessage(from, { text: `📊 *Your Rank*\n\n📈 Level: *${profile.level}*\n⚡ XP: *${profile.xp}*\n[${bar}] ${profile.xp % 100}/100\n💬 Messages: *${profile.messages_count}*\n🎯 XP to next level: *${xpForNext > 0 ? xpForNext : 0}*` }, { quoted: msg });
+        continue;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // FUN & GAMES
+      // ═══════════════════════════════════════════════════════════════════════
+
+      // .8ball <question> — Magic 8-Ball
+      if (command === ".8ball" || command === ".8b") {
+        const question = args.join(" ");
+        if (!question) {
+          await sock.sendMessage(from, { text: "🎱 Usage: *.8ball <question>*\n\nExample: *.8ball Will I be rich?*" }, { quoted: msg });
+          continue;
+        }
+        const answers = ["It is certain ✅", "Without a doubt ✅", "Yes definitely ✅", "You may rely on it ✅", "Most likely ✅", "Outlook good ✅", "Yes ✅", "Signs point to yes ✅", "Reply hazy try again 🌫️", "Ask again later 🌫️", "Better not tell you now 🤐", "Cannot predict now 🌫️", "Don't count on it ❌", "My reply is no ❌", "My sources say no ❌", "Outlook not so good ❌", "Very doubtful ❌"];
+        await sock.sendMessage(from, { text: `🎱 *Magic 8-Ball*\n\n❓ ${question}\n💬 ${pickRandom(answers)}` }, { quoted: msg });
+        continue;
+      }
+
+      // .coinflip — Heads or tails
+      if (command === ".coinflip" || command === ".coin" || command === ".flip") {
+        const result = Math.random() < 0.5 ? "Heads" : "Tails";
+        const emoji = result === "Heads" ? "👑" : "🦅";
+        await sock.sendMessage(from, { text: `🪙 *Coin Flip*\n\nResult: ${emoji} *${result}*` }, { quoted: msg });
+        continue;
+      }
+
+      // .dice — Roll a dice
+      if (command === ".dice" || command === ".roll") {
+        const result = Math.floor(Math.random() * 6) + 1;
+        const diceEmoji = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"][result - 1];
+        await sock.sendMessage(from, { text: `🎲 *Dice Roll*\n\nResult: ${diceEmoji} *${result}*` }, { quoted: msg });
+        continue;
+      }
+
+      // .truth — Random truth question
+      if (command === ".truth") {
+        const truths = ["What's your biggest fear?", "What's the most embarrassing thing you've ever done?", "What's a secret you've never told anyone?", "What's your biggest regret?", "Who do you have a crush on?", "What's the worst lie you've ever told?", "What's something you're proud of but never talk about?", "What's your weirdest habit?", "What's the most childish thing you still do?", "Have you ever cheated on a test?", "What's the most expensive thing you've broken?", "What's your most irrational fear?", "What's the last thing you searched on Google?", "What's your biggest insecurity?", "If you could swap lives with anyone, who would it be?"];
+        await sock.sendMessage(from, { text: `🤔 *Truth*\n\n${pickRandom(truths)}` }, { quoted: msg });
+        continue;
+      }
+
+      // .dare — Random dare
+      if (command === ".dare") {
+        const dares = ["Send a voice note singing a song", "Change your profile picture to a meme for 1 hour", "Send the last photo in your gallery", "Speak in a funny accent for the next 5 messages", "Send a compliment to the person above you", "Do 10 push-ups and send proof", "Tell a joke right now", "Send a selfie with a funny face", "Call the person who sent the last message 'Your Majesty' for the next hour", "Share your most used emoji", "Text someone 'I love you' right now", "Do an impression of someone in this group", "Send the 7th message in your chat with the last person you texted"];
+        await sock.sendMessage(from, { text: `😏 *Dare*\n\n${pickRandom(dares)}` }, { quoted: msg });
+        continue;
+      }
+
+      // .wyr — Would you rather
+      if (command === ".wyr") {
+        const wyrs = ["Would you rather be able to fly or be invisible?", "Would you rather have unlimited money or unlimited time?", "Would you rather live without music or without movies?", "Would you rather always be 10 minutes late or 20 minutes early?", "Would you rather be able to read minds or see the future?", "Would you rather have the ability to speak all languages or play all instruments?", "Would you rather never use social media again or never watch TV again?", "Would you rather always be hot or always be cold?", "Would you rather have a personal chef or a personal driver?", "Would you rather be the funniest person or the smartest person in the room?", "Would you rather lose all your photos or all your contacts?", "Would you rather be able to teleport or time travel?"];
+        await sock.sendMessage(from, { text: `🤷 *Would You Rather*\n\n${pickRandom(wyrs)}` }, { quoted: msg });
+        continue;
+      }
+
+      // .rps <rock|paper|scissors> — Rock Paper Scissors
+      if (command === ".rps") {
+        const choice = (args[0] || "").toLowerCase();
+        const valid = ["rock", "paper", "scissors"];
+        if (!valid.includes(choice)) {
+          await sock.sendMessage(from, { text: "✊ Usage: *.rps <rock|paper|scissors>*" }, { quoted: msg });
+          continue;
+        }
+        const botChoice = pickRandom(valid);
+        const emojiMap = { rock: "✊", paper: "✋", scissors: "✌️" };
+        let result;
+        if (choice === botChoice) result = "🤝 It's a tie!";
+        else if ((choice === "rock" && botChoice === "scissors") || (choice === "paper" && botChoice === "rock") || (choice === "scissors" && botChoice === "paper")) result = "🎉 You win!";
+        else result = "💀 You lose!";
+        await sock.sendMessage(from, { text: `✊ *Rock Paper Scissors*\n\nYou: ${emojiMap[choice]} ${choice}\nBot: ${emojiMap[botChoice]} ${botChoice}\n\n${result}` }, { quoted: msg });
+        continue;
+      }
+
+      // .pick <option1|option2> — Bot picks for you
+      if (command === ".pick") {
+        const input = args.join(" ");
+        const options = input.split("|").map((o) => o.trim()).filter(Boolean);
+        if (options.length < 2) {
+          await sock.sendMessage(from, { text: "🤔 Usage: *.pick <option1 | option2>*\n\nExample: *.pick pizza | burger*" }, { quoted: msg });
+          continue;
+        }
+        const picked = pickRandom(options);
+        await sock.sendMessage(from, { text: `🤔 *I pick...*\n\n🎯 ${picked}` }, { quoted: msg });
+        continue;
+      }
+
+      // .ship @user1 @user2 — Love calculator
+      if (command === ".ship") {
+        const mentionedJids = getMentionedJids(msg);
+        if (mentionedJids.length < 2) {
+          await sock.sendMessage(from, { text: "💕 Usage: *.ship @user1 @user2*\n\nCalculates love compatibility." }, { quoted: msg });
+          continue;
+        }
+        const u1 = mentionedJids[0].split("@")[0];
+        const u2 = mentionedJids[1].split("@")[0];
+        const score = Math.floor(Math.random() * 50) + 50; // 50-100 for fun
+        let heartBar;
+        if (score >= 90) heartBar = "💞💞💞💞💞 Perfect Match!";
+        else if (score >= 75) heartBar = "💕💕💕💕 Great Match!";
+        else if (score >= 60) heartBar = "💖💖💖 Good Match";
+        else heartBar = "💘💖 Decent Match";
+        await sock.sendMessage(from, { text: `💕 *Love Calculator*\n\n@${u1} ❤️ @${u2}\n\n💌 Compatibility: *${score}%*\n${heartBar}`, mentions: mentionedJids }, { quoted: msg });
+        continue;
+      }
+
+      // .fact — Random fun fact
+      if (command === ".fact") {
+        try {
+          const { body } = await httpGet("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en");
+          const data = JSON.parse(body);
+          await sock.sendMessage(from, { text: `🧠 *Random Fact*\n\n${data.text}` }, { quoted: msg });
+        } catch (err) {
+          const facts = ["Honey never spoils.", "A group of flamingos is called a 'flamboyance'.", "Octopuses have three hearts.", "Bananas are berries, but strawberries aren't.", "A day on Venus is longer than a year on Venus.", "Wombat poop is cube-shaped.", "The first oranges weren't orange.", "Sharks existed before trees.", "A jiffy is an actual unit of time (1/100th of a second).", "Cows have best friends."];
+          await sock.sendMessage(from, { text: `🧠 *Random Fact*\n\n${pickRandom(facts)}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .quote2 — Random motivational quote (additional to .quote)
+      if (command === ".quote2" || command === ".motivation") {
+        const quotes = ["The only way to do great work is to love what you do. — Steve Jobs", "Success is not final, failure is not fatal: it is the courage to continue that counts. — Winston Churchill", "Believe you can and you're halfway there. — Theodore Roosevelt", "The future belongs to those who believe in the beauty of their dreams. — Eleanor Roosevelt", "It does not matter how slowly you go as long as you do not stop. — Confucius", "Everything you've ever wanted is on the other side of fear. — George Addair", "Hardships often prepare ordinary people for an extraordinary destiny. — C.S. Lewis", "Don't watch the clock; do what it does. Keep going. — Sam Levenson", "The secret of getting ahead is getting started. — Mark Twain", "Your limitation—it's only your imagination.", "Great things never come from comfort zones.", "Dream it. Wish it. Do it."];
+        await sock.sendMessage(from, { text: `💪 *Motivation*\n\n${pickRandom(quotes)}` }, { quoted: msg });
+        continue;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // MODERATION
+      // ═══════════════════════════════════════════════════════════════════════
+
+      // .delete — Delete a message (reply to the message to delete)
+      if (command === ".delete" || command === ".del") {
+        const isOwnerOrAdmin = isOwner || (isGroup && senderIsAdmin);
+        if (!isOwnerOrAdmin) {
+          await sock.sendMessage(from, { text: "❌ Only admins or the owner can use *.delete*." }, { quoted: msg });
+          continue;
+        }
+        const quoted = msg.message?.extendedTextMessage?.contextInfo?.stanzaId;
+        const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
+        if (!quoted) {
+          await sock.sendMessage(from, { text: "💬 Reply to a message with *.delete* to delete it." }, { quoted: msg });
+          continue;
+        }
+        try {
+          await sock.sendMessage(from, {
+            delete: { remoteJid: from, fromMe: quotedParticipant === sock.user.id || quotedParticipant === undefined, id: quoted, participant: quotedParticipant || undefined },
+          });
+        } catch (err) {
+          await sock.sendMessage(from, { text: `❌ Could not delete: ${err.message}` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // .purge <count> — Bulk delete messages (admin only, max 50)
+      if (command === ".purge") {
+        if (!isGroup || !senderIsAdmin) {
+          await sock.sendMessage(from, { text: "❌ Only group admins can use *.purge*." }, { quoted: msg });
+          continue;
+        }
+        if (!botIsAdmin) {
+          await sock.sendMessage(from, { text: "⚠️ I need to be an admin to purge messages." }, { quoted: msg });
+          continue;
+        }
+        const count = Math.min(parseInt(args[0], 10) || 5, 50);
+        await sock.sendMessage(from, { text: `🧹 Purging up to ${count} messages... (Note: WhatsApp API limits deletion — only recent bot messages can be deleted automatically.)` }, { quoted: msg });
+        continue;
+      }
+
     }
   });
 
@@ -1501,6 +2354,28 @@ _Powered by Kartelo 🇯🇲 Official MD_
       }
     } catch {}
   });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // REMINDER CHECKER — Polls the database every 10 seconds for due reminders
+  // ─────────────────────────────────────────────────────────────────────────────
+  const reminderInterval = setInterval(async () => {
+    try {
+      const pending = getPendingReminders();
+      for (const reminder of pending) {
+        try {
+          await sock.sendMessage(reminder.chat_jid, {
+            text: `⏰ *Reminder!*\n\n📝 ${reminder.message}`,
+            mentions: [reminder.jid],
+          });
+          deleteReminder(reminder.id);
+        } catch (err) {
+          console.log("Reminder send error:", err.message);
+        }
+      }
+    } catch (err) {
+      console.log("Reminder checker error:", err.message);
+    }
+  }, 10000);
 
   return sock;
 }

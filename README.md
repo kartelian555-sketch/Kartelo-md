@@ -1,602 +1,326 @@
-# Kartelo 🇯🇲 Official MD
+<p align="center">
+  <img src="assets/kartelo-banner.png" width="100%" />
+</p>
 
-A powerful WhatsApp Multi-Device bot built with [Baileys](https://github.com/WhiskeySockets/Baileys), featuring 30+ commands, group management, an admin panel, and dual authentication support.
+<p align="center">
+  <a href="https://github.com/kartelian555-sketch/Kartelo-md">
+    <img src="https://readme-typing-svg.demolab.com?font=Black+Ops+One&size=45&pause=1000&color=00FF00&center=true&width=900&height=90&lines=KARTELO+MD+BOT;THE+MOST+POWERFUL+WHATSAPP+BOT;BY+KARTELO+OFFICIAL;80%2B+COMMANDS+%7C+AI+%7C+ECONOMY" />
+  </a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/stars/kartelian555-sketch/Kartelo-md?style=for-the-badge&color=green&label=STARS" />
+  <img src="https://img.shields.io/github/forks/kartelian555-sketch/Kartelo-md?style=for-the-badge&color=blue&label=FORKS" />
+  <img src="https://img.shields.io/github/watchers/kartelian555-sketch/Kartelo-md?style=for-the-badge&color=red&label=WATCHERS" />
+  <img src="https://img.shields.io/github/repo-size/kartelian555-sketch/Kartelo-md?style=for-the-badge&color=yellow&label=SIZE" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-20.x-339933?style=for-the-badge&logo=node.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/Baileys-MD-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" />
+  <img src="https://img.shields.io/badge/Commands-80%2B-00FF00?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Status-ONLINE-25D366?style=for-the-badge" />
+</p>
 
 ---
 
-## Features
+## 👑 OWNER INFO
 
-- ✅ 30+ commands (general, group management, owner tools, channels)
-- ✅ Dual auth: Pairing Code or Session ID
-- ✅ Web admin panel (Dashboard, Send Message, Broadcast, Groups, Logs)
-- ✅ Anti-link protection per group
-- ✅ Welcome messages for new members
-- ✅ Tag all members / Hide tag
-- ✅ Group info, invite link, revoke link
-- ✅ Owner broadcast to all chats
-- ✅ Keep-alive HTTP server
+| Info | Details |
+|------|---------|
+| **Owner** | Kartelo Official |
+| **Number** | 254711939375 |
+| **Bot Name** | KARTELO MD |
+| **Channel** | [Join WhatsApp Channel](https://whatsapp.com/channel/0029VaZQBCKHk6Z5i3lQL83g) |
+| **GitHub** | [kartelian555-sketch/Kartelo-md](https://github.com/kartelian555-sketch/Kartelo-md) |
 
 ---
 
-## Commands
+## 🔐 SESSION — GET PAIR CODE
 
-### General
-| Command | Description |
-|---|---|
-| `.menu` | Show all commands with image |
-| `.ping` | Check bot response speed |
-| `.alive` | Check if bot is online |
-| `.uptime` | Bot running time |
-| `.time` | Current date & time |
-| `.owner` | Show owner contact |
-| `.botinfo` | Bot details |
-| `.quote` | Random inspirational quote |
-| `.joke` | Random joke |
+> Get your pairing code via the Pair Code Server
 
-### Group Management *(Admin only)*
+<a href="https://kartelo-session.onrender.com">
+  <img src="https://img.shields.io/badge/PAIR_CODE_SERVER-00FF00?style=for-the-badge&logo=whatsapp&logoColor=white" />
+</a>
+
+<a href="https://kartelo-session2.onrender.com">
+  <img src="https://img.shields.io/badge/PAIR_CODE_SERVER_2-FF0000?style=for-the-badge&logo=whatsapp&logoColor=white" />
+</a>
+
+### How to Link:
+1. Open WhatsApp → Settings → Linked Devices → Link a Device
+2. Tap **"Link with phone number instead"**
+3. Enter the 8-digit code from the pair server
+
+---
+
+## 📦 DOWNLOAD ZIP
+
+<a href="https://github.com/kartelian555-sketch/Kartelo-md/archive/refs/heads/main.zip">
+  <img src="https://img.shields.io/badge/DOWNLOAD_ZIP-000000?style=for-the-badge&logo=github&logoColor=white" />
+</a>
+
+---
+
+## 🚀 DEPLOY NOW
+
+### Deploy on Panels (Free)
+
+| Platform | Deploy Link |
+|----------|------------|
+| **Bot Hosting** | [Deploy →](https://bot-hosting.net) |
+| **Katabump** | [Deploy →](https://katabump.com) |
+| **Solar Hosting** | [Deploy →](https://account.solarhosting.cc) |
+
+### 1-Click Heroku Deploy
+
+<a href="https://dashboard.heroku.com/new?template=https://github.com/kartelian555-sketch/Kartelo-md">
+  <img src="https://img.shields.io/badge/Deploy_to_Heroku-430098?style=for-the-badge&logo=heroku&logoColor=white" />
+</a>
+
+### Deploy on Render
+
+<a href="https://render.com/deploy?repo=https://github.com/kartelian555-sketch/Kartelo-md">
+  <img src="https://img.shields.io/badge/Deploy_to_Render-46E3B7?style=for-the-badge&logo=render&logoColor=black" />
+</a>
+
+### Deploy on Koyeb
+
+<a href="https://app.koyeb.com/deploy?name=kartelo-md&type=git&repository=kartelian555-sketch%2FKartelo-md&branch=main">
+  <img src="https://img.shields.io/badge/Deploy_to_Koyeb-1ed760?style=for-the-badge&logo=koyeb&logoColor=black" />
+</a>
+
+---
+
+## ⚙️ ENVIRONMENT VARIABLES
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OWNER_NUMBER` | Your WhatsApp number with country code | `254711939375` |
+| `PREFIX` | Command prefix | `.` |
+| `MODE` | `public` or `self` | `public` |
+| `USE_PAIRING_CODE` | Use pair code (true) or QR (false) | `true` |
+| `SESSION_ID` | Session ID from pair server (optional) | — |
+| `PORT` | Web panel port | `3000` |
+| `PANEL_PASSWORD` | Admin panel password | `kartelo2024` |
+| `BOT_NAME` | Bot display name | `KARTELO MD` |
+| `BOT_DISPLAY_NAME` | WhatsApp profile name | `KARTELO MD` |
+| `BOT_ABOUT` | WhatsApp about status | `🤖 KARTELO MD...` |
+| `API_KEY` | REST API key | `kartelo-secret-api-key-2024` |
+| `OPENAI_API_KEY` | OpenAI key for `.ai` (optional) | — |
+| `WEATHER_API_KEY` | OpenWeatherMap key (optional) | — |
+
+---
+
+## ⚡ FEATURES
+
+- ✅ **Multi-Device WhatsApp** (Baileys MD)
+- ✅ **80+ Commands** across 10 categories
+- ✅ **AI Chat** — OpenAI + free Pollinations fallback
+- ✅ **AI Image Generation** — `.imagine` command
+- ✅ **Sticker Maker** — HD stickers from images/videos
+- ✅ **Downloader** — YouTube (play/video/ytmp3/ytmp4)
+- ✅ **Economy System** — wallet, daily, weekly, gamble, leaderboard
+- ✅ **Leveling & XP** — auto XP gain, ranks, profiles
+- ✅ **Group Management** — tagall, kick, promote, antilink, welcome
+- ✅ **Moderation** — ban, warn, notes, custom replies
+- ✅ **Fun & Games** — truth/dare, 8ball, rps, dice, ship, jokes
+- ✅ **AFK System** — auto-response when away
+- ✅ **Reminders** — timed message reminders
+- ✅ **Weather & Wiki** — real-time data
+- ✅ **REST API** — 11 endpoints with API key auth
+- ✅ **Profile Auto-Setup** — auto-sets profile pic, about, name
+- ✅ **Admin Web Panel** — live pairing code, QR, stats
+- ✅ **Docker & Render Ready** — 1-click deploy
+
+---
+
+## 📜 COMMANDS
+
+Use `.menu` in WhatsApp to see the full categorized list.
+
+<details>
+<summary><b>📖 Click to expand full command list</b></summary>
+
+### 📥 Download
 | Command | Description |
-|---|---|
-| `.kick @user` | Remove a member |
-| `.promote @user` | Make member admin |
-| `.demote @user` | Remove admin rights |
-| `.mute` | Mute group (admins only) |
-| `.unmute` | Unmute group |
+|---------|-------------|
+| `.play [song]` | Download YouTube audio |
+| `.video [name]` | Download YouTube video |
+| `.ytmp3 [url]` | YouTube to MP3 |
+| `.ytmp4 [url]` | YouTube to MP4 |
+| `.dl [url]` | Generic download link |
+
+### 🤖 AI
+| Command | Description |
+|---------|-------------|
+| `.ai [question]` | Chat with AI (OpenAI/Pollinations) |
+| `.imagine [prompt]` | Generate AI image |
+| `.wiki [query]` | Search Wikipedia |
+| `.define [word]` | Dictionary definition |
+| `.tr [text]` | Translate to English |
+
+### 😀 Sticker
+| Command | Description |
+|---------|-------------|
+| `.sticker` / `.s` | Create sticker from image/video |
+| `.toimg` | Convert sticker to image |
+| `.qr [text]` | Generate QR code |
+
+### 👥 Group
+| Command | Description |
+|---------|-------------|
 | `.tagall` | Tag all members |
-| `.hidetag [msg]` | Tag all silently |
-| `.groupinfo` | Show group details |
-| `.link` | Get invite link |
-| `.revoke` | Reset invite link |
-| `.setname [name]` | Change group name |
-| `.setdesc [text]` | Change group description |
-| `.antilink on/off` | Toggle anti-link |
-| `.welcome on/off` | Toggle welcome messages |
+| `.hidetag [text]` | Hidden tag |
+| `.kick @user` | Remove member |
+| `.promote` / `.demote` | Manage admins |
+| `.mute` / `.unmute` | Toggle group mute |
+| `.antilink on/off` | Anti-link protection |
+| `.welcome on/off` | Welcome messages |
+| `.groupinfo` | Group information |
+| `.link` / `.revoke` | Invite link management |
+| `.setname` / `.setdesc` | Edit group info |
 
-### Owner Tools
+### 💰 Economy
 | Command | Description |
-|---|---|
-| `.eval [code]` | Run JavaScript code |
-| `.block @user` | Block a user |
-| `.unblock @user` | Unblock a user |
-| `.broadcast [msg]` | Send to all chats |
+|---------|-------------|
+| `.wallet` / `.balance` | Check balance |
+| `.daily` / `.weekly` | Claim rewards |
+| `.gamble [amount]` | Gamble coins |
+| `.pay @user [amt]` | Pay another user |
+| `.leaderboard` / `.lb` | Top earners |
 
-### Channel Commands
+### 🎮 Fun & Games
 | Command | Description |
-|---|---|
-| `.channelinfo` | Channel details |
-| `.followchannel` | Follow a channel |
-| `.unfollowchannel` | Unfollow a channel |
-| `.channelsend [msg]` | Send to channel |
-| `.mutenotif` | Mute notifications |
-| `.unmutenotif` | Unmute notifications |
+|---------|-------------|
+| `.truth` / `.dare` | Truth or dare |
+| `.wyr` | Would you rather |
+| `.8ball` / `.8b` | Magic 8 ball |
+| `.coin` / `.dice` / `.rps` | Mini games |
+| `.ship @user @user` | Ship meter |
+| `.joke` / `.quote` / `.fact` | Random content |
+
+### 📊 Leveling
+| Command | Description |
+|---------|-------------|
+| `.profile` | View your profile |
+| `.rank` | Check your rank |
+| `.xp` | Check XP |
+| `.setbio [text]` | Set profile bio |
+
+### ⚡ Utilities
+| Command | Description |
+|---------|-------------|
+| `.afk [reason]` | Set AFK status |
+| `.remind [time] [text]` | Set reminder |
+| `.weather [city]` | Weather report |
+| `.ping` / `.alive` | Bot status |
+| `.calc [expr]` | Calculator |
+
+### 👑 Owner
+| Command | Description |
+|---------|-------------|
+| `.setpp` | Set bot profile picture |
+| `.setabout [text]` | Set about status |
+| `.setnamebot [text]` | Set bot name |
+| `.broadcast [text]` | Broadcast to all chats |
+| `.mode` | Toggle public/self |
+| `.restart` | Restart bot |
+
+</details>
 
 ---
 
-## Installation
+## 📂 PROJECT STRUCTURE
 
-### Requirements
-- Node.js v18+
-- A WhatsApp account
+```
+KARTELO-MD/
+├── 📁 plugins/           # Modular command handlers
+│   ├── group.js          # Group management commands
+│   ├── download.js       # Download commands
+│   ├── ai.js             # AI & search commands
+│   ├── fun.js            # Fun & games commands
+│   ├── owner.js          # Owner-only commands
+│   └── sticker.js        # Sticker commands
+├── 📁 lib/               # Shared libraries
+│   ├── functions.js      # Utility functions
+│   └── menu.js           # Fancy box menu
+├── 📁 assets/            # Images & media
+│   └── kartelo-banner.png
+├── config.js             # Global configuration (JUNE-X style)
+├── index.js              # Main bot file (Baileys connection)
+├── pair.js               # Standalone pair code server
+├── database.js           # SQLite database layer
+├── commands.js           # Legacy command helpers
+├── Dockerfile            # Docker deployment
+├── render.yaml           # Render deployment
+├── app.json              # Heroku 1-click deploy
+├── package.json
+└── README.md
+```
 
-### Setup
+---
+
+## 🔧 LOCAL SETUP
 
 ```bash
-# 1. Clone the repo
+# Clone the repo
 git clone https://github.com/kartelian555-sketch/Kartelo-md.git
 cd Kartelo-md
 
-# 2. Install dependencies
+# Install dependencies
 npm install
 
-# 3. Configure environment
+# Configure
 cp .env.example .env
-# Edit .env with your details
+# Edit .env with your settings
 
-# 4. Start the bot
-node index.js
-```
+# Start the bot
+npm start
 
-### Configuration (`.env`)
-
-```env
-OWNER_NUMBER=254711939375      # Your WhatsApp number (no + or spaces)
-USE_PAIRING_CODE=true          # true = pairing code, false = QR code
-SESSION_ID=                    # Leave empty for first run
-MENU_IMAGE_URL=                # Optional menu banner image URL
-PANEL_PASSWORD=kartelo2024     # Admin panel password
+# Or run the pair code server separately
+npm run pair
 ```
 
 ---
 
-## Admin Panel
+## 🌐 REST API
 
-The bot comes with a built-in web admin panel — no extra software needed.
+The bot includes a built-in REST API (11 endpoints) with API key authentication:
 
-### How to Access
+```bash
+# Get bot status
+curl "https://your-deploy-url/api/status?key=YOUR_API_KEY"
 
-| Location | URL |
-|---|---|
-| **Local / Replit** | `http://localhost:3000` |
-| **VPS Server** | `http://YOUR_SERVER_IP:3000` |
-| **Heroku / Railway** | `https://your-app-url/panel` |
+# Send a message
+curl -X POST "https://your-deploy-url/api/send?key=YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"number":"254712345678","message":"Hello from KARTELO MD!"}'
+```
 
-**Default password:** `kartelo2024` (change in `.env` → `PANEL_PASSWORD`)
+See [`api.md`](api.md) for full API documentation.
 
 ---
 
-### Panel Pages
+## ⭐ SUPPORT
 
-#### 📊 Dashboard
-- Live bot connection status (Connected / Disconnected / Starting)
-- Bot uptime counter
-- Owner number
-- Total commands available (30+)
-- Number of groups tracked
-- Connected at timestamp
-- **Pairing code shown in big green** when bot is not connected
-- Recent activity log (last 10 commands)
+If you like KARTELO MD, please ⭐ **star the repo** and share it!
 
-#### ✉️ Send Message
-- Send a WhatsApp message to **any number** directly from your browser
-- Enter number (with country code, no +) and message
-- Useful for sending messages without opening WhatsApp
-
-#### 📢 Broadcast
-- Send one message to **all chats at once**
-- Reaches all groups and private chats the bot is in
-- Perfect for announcements
-
-#### 👥 Groups
-- View all groups the bot is tracking
-- See Anti-link status (ON/OFF) per group
-- See Welcome message status (ON/OFF) per group
-
-#### 📋 Logs
-- Live feed of all commands used
-- Shows who used which command and when
-- Helps monitor bot activity
+<p align="center">
+  <a href="https://github.com/kartelian555-sketch/Kartelo-md">
+    <img src="https://img.shields.io/github/stars/kartelian555-sketch/Kartelo-md?style=social" />
+  </a>
+</p>
 
 ---
 
-### Panel Security
+## 📜 LICENSE
 
-- Password protected — no one can access without `PANEL_PASSWORD`
-- Session cookie expires when browser closes
-- Change password anytime in `.env`:
-```
-PANEL_PASSWORD=your_new_password
-```
-Then restart the bot.
+MIT License — Free to use, modify, and distribute.
 
 ---
 
-### Open Firewall Port for Panel on VPS
-
-```bash
-sudo ufw allow 3000
-sudo ufw allow 22
-sudo ufw enable
-sudo ufw status
-```
-
----
-
-## Connecting to WhatsApp
-
-### Pairing Code (Recommended)
-1. Start the bot: `node index.js`
-2. Open WhatsApp → **Linked Devices → Link a Device**
-3. Tap **"Link with phone number instead"**
-4. Enter your number and the 8-digit code shown in the console
-
-### Session ID (For cloud hosting)
-1. Connect once using pairing code
-2. Run: `cat auth_info/creds.json | base64`
-3. Paste the output as `SESSION_ID` in your `.env`
-
----
-
-## Hosting
-
-### Ubuntu VPS Control Panels
-
-Control panels let you manage your VPS from a browser — no terminal needed for daily tasks.
-
-#### Option 1 — aaPanel *(Most recommended for bot hosting)*
-
-```bash
-# Install aaPanel on Ubuntu
-wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh
-sudo bash install.sh aapanel
-```
-
-After install you'll see:
-```
-aaPanel Internet Address: http://YOUR_IP:7800/xxxxxxxx
-username: admin
-password: xxxxxxxx
-```
-
-Open that URL in your browser to access the panel.
-
-**aaPanel features for the bot:**
-| Feature | What you can do |
-|---|---|
-| File Manager | Edit `.env`, view logs from browser |
-| Terminal | Run PM2 commands from browser |
-| Monitor | See CPU, RAM, network usage live |
-| Task Manager | Start/stop/restart the bot |
-| Firewall | Open/close ports (3000, 22) |
-
-#### Option 2 — Webmin
-
-```bash
-curl -o setup-repos.sh https://raw.githubusercontent.com/webmin/webmin/master/setup-repos.sh
-sudo sh setup-repos.sh
-sudo apt install -y webmin
-```
-
-Access at: `https://YOUR_SERVER_IP:10000`
-Login with your Linux `root` username and password.
-
-#### Option 3 — HestiaCP
-
-```bash
-wget https://raw.githubusercontent.com/hestiacp/hestiacp/release/install/hst-install.sh
-sudo bash hst-install.sh
-```
-
-Access at: `https://YOUR_SERVER_IP:8083`
-
----
-
-#### After Installing Any Panel — Run the Bot
-
-Open the panel's **Terminal** tab and run:
-```bash
-cd /root/Kartelo-md
-pm2 start index.js --name kartelo-bot
-pm2 save
-```
-
-Then open `http://YOUR_SERVER_IP:3000` in your browser to see the bot's own admin panel with the pairing code.
-
----
-
-### VPS Requirements (Ubuntu 20.04 / 22.04)
-
-| Resource | Minimum | Recommended |
-|---|---|---|
-| **CPU** | 1 vCPU | 1–2 vCPU |
-| **RAM** | 512 MB | 1 GB |
-| **Storage** | 5 GB | 10 GB |
-| **Network** | 100 Mbps | 100 Mbps+ |
-| **OS** | Ubuntu 20.04 | Ubuntu 22.04 LTS |
-
-### Monthly Data Usage
-
-| Activity | Estimated Usage |
-|---|---|
-| Bot idle (connected) | ~1–3 GB/month |
-| Active messaging | ~3–8 GB/month |
-| Broadcast to many groups | Varies |
-
-### Recommended VPS Providers
-
-| Provider | Price | Specs |
-|---|---|---|
-| [Contabo](https://contabo.com) | $5/month | 4 vCPU, 4 GB RAM |
-| [Hetzner](https://hetzner.com) | $4/month | 2 vCPU, 2 GB RAM |
-| [DigitalOcean](https://digitalocean.com) | $6/month | 1 vCPU, 1 GB RAM |
-| [Vultr](https://vultr.com) | $5/month | 1 vCPU, 1 GB RAM |
-| [Hostinger VPS](https://hostinger.com) | $4/month | 1 vCPU, 1 GB RAM |
-
-### Ubuntu VPS Full Setup
-
-```bash
-# 1. Update server
-sudo apt update && sudo apt upgrade -y
-
-# 2. Install Node.js 18
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs git
-
-# 3. Clone the bot
-cd /root
-git clone https://github.com/kartelian555-sketch/Kartelo-md.git
-cd Kartelo-md
-npm install
-
-# 4. Configure environment
-cp .env.example .env
-nano .env   # fill in your details, save with Ctrl+X → Y → Enter
-
-# 5. Install PM2 (keeps bot running 24/7)
-npm install -g pm2
-
-# 6. Start the bot
-pm2 start index.js --name kartelo-bot
-pm2 startup
-pm2 save
-```
-
-### PM2 Commands
-
-| Command | What it does |
-|---|---|
-| `pm2 logs kartelo-bot` | View live logs + pairing code |
-| `pm2 restart kartelo-bot` | Restart the bot |
-| `pm2 stop kartelo-bot` | Stop the bot |
-| `pm2 status` | Check running status |
-
-### Connecting to WhatsApp from VPS
-
-#### Step 1 — SSH into your server
-```bash
-ssh root@YOUR_SERVER_IP
-```
-
-#### Step 2 — Clone and install
-```bash
-cd /root
-git clone https://github.com/kartelian555-sketch/Kartelo-md.git
-cd Kartelo-md
-npm install
-```
-
-#### Step 3 — Configure environment
-```bash
-cp .env.example .env
-nano .env
-```
-Set these values:
-```
-OWNER_NUMBER=254711939375
-USE_PAIRING_CODE=true
-PANEL_PASSWORD=kartelo2024
-PORT=3000
-```
-Save with `Ctrl+X` → `Y` → `Enter`
-
-#### Step 4 — Start the bot
-```bash
-npm install -g pm2
-pm2 start index.js --name kartelo-bot
-pm2 save
-```
-
-#### Step 5 — Get your pairing code
-```bash
-pm2 logs kartelo-bot
-```
-Look for:
-```
-║   >>> XXXXXXXX <<<   ║
-```
-
-#### Step 6 — Open firewall for admin panel
-```bash
-sudo ufw allow 3000
-sudo ufw allow 22
-sudo ufw enable
-```
-
-#### Step 7 — Open admin panel in browser
-Go to: `http://YOUR_SERVER_IP:3000`
-Login password: `kartelo2024`
-
-The pairing code will appear in **big green** on the dashboard automatically.
-
-#### Step 8 — Enter code in WhatsApp
-1. Open WhatsApp on your phone
-2. Tap **⋮ → Linked Devices → Link a Device**
-3. Tap **"Link with phone number instead"**
-4. Select country 🇰🇪 **Kenya (+254)**
-5. Enter number: **`711939375`** (no 254, no 0)
-6. Enter the 8-digit code shown on the panel
-7. Tap **Link** ✅
-
-#### ⚠️ Common Mistakes When Entering Number
-
-| Wrong | Correct |
-|---|---|
-| `254711939375` with Kenya selected | `711939375` |
-| `0711939375` | `711939375` |
-| Wrong country selected | Must be 🇰🇪 Kenya (+254) |
-
-### Keep Bot Running 24/7 on VPS
-
-#### Disable Power Saving / Sleep on the Server
-```bash
-sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
-```
-
-#### Enable PM2 Auto-Start on Reboot
-```bash
-pm2 startup systemd -u root --hp /root
-pm2 save
-```
-
-#### Set PM2 to Auto-Restart on Crash
-```bash
-pm2 start index.js --name kartelo-bot --restart-delay=3000 --max-restarts=10
-pm2 save
-```
-
-#### Verify it Survives Reboot
-```bash
-sudo reboot
-# After reboot:
-pm2 status    # should show kartelo-bot as online
-pm2 logs kartelo-bot
-```
-
-#### Keep Server Awake (Prevent Idle Shutdown)
-```bash
-sudo apt install -y screen
-screen -S kartelo
-pm2 start index.js --name kartelo-bot
-# Press Ctrl+A then D to detach
-# To re-attach later:
-screen -r kartelo
-```
-
-#### PM2 Config for Maximum Uptime
-Create a `ecosystem.config.js` file:
-```js
-module.exports = {
-  apps: [{
-    name: 'kartelo-bot',
-    script: 'index.js',
-    watch: false,
-    autorestart: true,
-    restart_delay: 3000,
-    max_restarts: 50,
-    exp_backoff_restart_delay: 100,
-    env: {
-      NODE_ENV: 'production'
-    }
-  }]
-}
-```
-Then run:
-```bash
-pm2 start ecosystem.config.js
-pm2 save
-```
-
-### Open the Admin Panel on VPS
-
-In your browser: `http://YOUR_SERVER_IP:3000`
-
-To open the firewall port:
-```bash
-sudo ufw allow 3000
-sudo ufw allow 22
-sudo ufw enable
-```
-
-### Heroku Deployment
-
-| Step | Action |
-|---|---|
-| 1 | Go to [dashboard.heroku.com](https://dashboard.heroku.com) → New → Create new app |
-| 2 | Settings → Config Vars → add your `.env` values |
-| 3 | Deploy → GitHub → connect `Kartelo-md` → Deploy Branch |
-| 4 | Resources → turn ON the `worker` dyno |
-| 5 | More → View logs → find pairing code → connect WhatsApp |
-
-### Heroku Network & Bandwidth
-
-| Resource | Limit | Notes |
-|---|---|---|
-| **Bandwidth** | 2 TB/month | More than enough for a WhatsApp bot |
-| **Network In** | Unlimited | Incoming messages |
-| **Network Out** | 2 TB/month | Outgoing messages and media |
-| **Connections** | Unlimited | WebSocket connections supported |
-| **Dyno RAM** | 512 MB (Basic) | Sufficient for bot operation |
-| **Request Timeout** | 30 seconds | HTTP requests only |
-| **Dyno Uptime** | 24/7 | Basic/Standard dynos never sleep |
-
-### Heroku Dyno Plans
-
-| Plan | Price | RAM | Sleep? | Best For |
-|---|---|---|---|---|
-| **Eco** | $5/month (shared) | 512 MB | Yes — avoid | Testing only |
-| **Basic** | $5/month | 512 MB | No | WhatsApp bot |
-| **Standard-1X** | $25/month | 512 MB | No | High traffic |
-| **Standard-2X** | $50/month | 1 GB | No | Heavy usage |
-
-> Use **Basic** dyno — it runs 24/7 and costs only $5/month. Eco dynos sleep after 30 minutes of inactivity which will disconnect the bot.
-
-### Heroku Useful Commands
-
-```bash
-heroku logs --tail --app kartelo-md-bot     # Live logs
-heroku ps --app kartelo-md-bot              # Dyno status
-heroku restart --app kartelo-md-bot         # Restart bot
-heroku config --app kartelo-md-bot          # View env vars
-heroku ps:scale worker=1 --app kartelo-md-bot  # Start worker
-```
-
-### Railway Server Deployment
-
-| Step | Action |
-|---|---|
-| 1 | Go to [railway.app](https://railway.app) → Login with GitHub |
-| 2 | Click **New Project → Deploy from GitHub repo** |
-| 3 | Select your `Kartelo-md` repository |
-| 4 | Click **Add Variables** and add your `.env` values |
-| 5 | Railway auto-detects Node.js and deploys automatically |
-| 6 | Click **View Logs** → find pairing code → connect WhatsApp |
-
-### Railway Network & Bandwidth
-
-| Resource | Free Tier | Pro Plan |
-|---|---|---|
-| **Bandwidth** | 100 GB/month | 100 GB included + $0.10/GB |
-| **RAM** | 512 MB | Up to 32 GB |
-| **CPU** | Shared | Dedicated |
-| **Uptime** | 500 hrs/month | 24/7 unlimited |
-| **Sleep** | No | No |
-| **Network** | Public URL included | Custom domain supported |
-
-### Railway Plans
-
-| Plan | Price | Hours | Best For |
-|---|---|---|---|
-| **Hobby** | $5/month | Unlimited | WhatsApp bot (recommended) |
-| **Pro** | $20/month | Unlimited | High traffic bots |
-| **Free** | $0 | 500 hrs/month | Testing only |
-
-> Use **Hobby ($5/month)** — runs 24/7 without sleeping, perfect for a WhatsApp bot.
-
-### Railway Environment Variables
-
-In Railway dashboard → your project → **Variables** tab, add:
-```
-OWNER_NUMBER      = 254711939375
-USE_PAIRING_CODE  = true
-SESSION_ID        =
-PANEL_PASSWORD    = kartelo2024
-PORT              = 3000
-```
-
-### Railway Useful Commands (CLI)
-
-```bash
-# Install Railway CLI
-npm install -g @railway/cli
-
-# Login
-railway login
-
-# Link to your project
-railway link
-
-# View live logs
-railway logs
-
-# Restart the service
-railway up
-```
-
-### Other Hosting Options
-
-| Platform | Cost | Notes |
-|---|---|---|
-| [Replit](https://replit.com) | ~$7/month | Reserved VM plan needed |
-| [Railway](https://railway.app) | Free / $5 | Easy GitHub deploy |
-| [Render](https://render.com) | Free | Spins down when idle |
-
----
-
-## Owner
-
-**Kartelo 🇯🇲 Official MD**
-WhatsApp: +254711939375
-
----
-
-## License
-
-MIT License — free to use and modify.
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Black+Ops+One&size=25&pause=1000&color=00FF00&center=true&width=600&height=50&lines=Made+with+%E2%9D%A4+in+Kenya+%F0%9F%87%B0%F0%9F%87%AA;Powered+by+KARTELO+OFFICIAL" />
+</p>

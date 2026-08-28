@@ -1,0 +1,21 @@
+# KARTELO MD — Render Deploy Config
+services:
+  - type: web
+    name: kartelo-md
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: OWNER_NUMBER
+        value: "254711939375"
+      - key: PORT
+        value: "3000"
+      - key: PREFIX
+        value: "."
+      - key: MODE
+        value: "public"
+      - key: USE_PAIRING_CODE
+        value: "true"
+      - key: BOT_NAME
+        value: "KARTELO MD"

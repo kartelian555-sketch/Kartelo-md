@@ -1,11 +1,12 @@
 {
-  "name": "@workspace/kartelo-md",
-  "version": "1.0.0",
-  "description": "Kartelo 🇯🇲 Official MD — Professional WhatsApp automation bot using Baileys",
+  "name": "kartelo-md",
+  "version": "2.0.0",
+  "description": "KARTELO MD — The Most Powerful WhatsApp Bot by Kartelo Official | 80+ commands, AI, economy, leveling, stickers, group management",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node index.js"
+    "dev": "node index.js",
+    "pair": "node pair.js"
   },
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
@@ -18,15 +19,26 @@
     "qrcode-terminal": "^0.12.0",
     "yt-search": "^2.13.1"
   },
+  "allowScripts": {
+    "better-sqlite3": true
+  },
   "engines": {
     "node": ">=18.0.0"
   },
   "keywords": [
     "whatsapp",
     "bot",
+    "md",
+    "kartelo",
     "baileys",
+    "ai",
     "automation"
   ],
-  "author": "",
-  "license": "MIT"
+  "author": "Kartelo Official",
+  "license": "MIT",
+  "homepage": "https://github.com/kartelian555-sketch/Kartelo-md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kartelian555-sketch/Kartelo-md"
+  }
 }

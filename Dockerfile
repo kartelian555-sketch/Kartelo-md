@@ -1,17 +1,16 @@
-FROM node:20-slim
+# KARTELO MD — Dockerfile (JUNE-X style)
+FROM node:20
 
 WORKDIR /app
 
+# Install build tools for native modules (better-sqlite3)
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json ./
-RUN npm install --production
+RUN npm install
 
 COPY . .
 
-RUN mkdir -p auth_info
-
-ENV NODE_ENV=production
-ENV PORT=3000
-
 EXPOSE 3000
 
-CMD ["node", "index.js"]
+CMD ["npm", "start"]
